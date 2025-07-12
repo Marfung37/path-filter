@@ -51,31 +51,56 @@ fun main(args: Array<String>) {
 }
 
 fun filterMain(args: Array<String>) {
-    val lines = File("path.csv").readLines().asSequence()
-            .drop(1)
-            .map { it.split(",") }
-            .filter { it.isNotEmpty() }
-            .mapIndexed { index, elements -> toItem(index, elements) }
-            .toList()
-
     if (args.isEmpty()) {
+    } else if (args[0] == "verify" && args.size == 3) {
+        val pathFilename = args[1];
+        val outputFilename = args[2];
+
+        val lines = File(pathFilename).readLines().asSequence()
+                .drop(1)
+                .map { it.split(",") }
+                .filter { it.isNotEmpty() }
+                .mapIndexed { index, elements -> toItem(index, elements) }
+                .toList()
+        
+        val output = File(outputFilename).readLines().asSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toList()
+
+        verify(lines, output)
+    } else if (args.size == 6) {
+        val pathFilename = args[0];
+        val outputFilename = args[1];
+        val populationScale = args[2].toDouble()
+        val childrenScale = args[3].toDouble()
+        val mutationScale = args[4].toDouble()
+        val maxGeneration = args[5].toInt()
+
+        val lines = File(pathFilename).readLines().asSequence()
+                .drop(1)
+                .map { it.split(",") }
+                .filter { it.isNotEmpty() }
+                .mapIndexed { index, elements -> toItem(index, elements) }
+                .toList()
+
+        run(lines, outputFilename, Settings(populationScale, childrenScale, mutationScale, maxGeneration))
+    } else if (args.size == 2) {
+        val pathFilename = args[0];
+        val outputFilename = args[1];
         val populationScale = 5.0
         val childrenScale = 1.0
         val mutationScale = 6.0  // < dimension
         val maxGeneration = 300000
-        run(lines, Settings(populationScale, childrenScale, mutationScale, maxGeneration))
-    } else if (args[0] == "verify") {
-        val output = File("output.txt").readLines().asSequence()
-                .map { it.trim() }
+
+        val lines = File(pathFilename).readLines().asSequence()
+                .drop(1)
+                .map { it.split(",") }
                 .filter { it.isNotEmpty() }
+                .mapIndexed { index, elements -> toItem(index, elements) }
                 .toList()
-        verify(lines, output)
-    } else if (args.size == 4) {
-        val populationScale = args[0].toDouble()
-        val childrenScale = args[1].toDouble()
-        val mutationScale = args[2].toDouble()
-        val maxGeneration = args[3].toInt()
-        run(lines, Settings(populationScale, childrenScale, mutationScale, maxGeneration))
+
+        run(lines, outputFilename, Settings(populationScale, childrenScale, mutationScale, maxGeneration))
     }
 }
 
@@ -109,7 +134,7 @@ fun verify(lines: List<Line>, answer: List<String>) {
     println("http://fumen.zui.jp/?v115@$data")
 }
 
-fun run(lines_: List<Line>, settings: Settings) {
+fun run(lines_: List<Line>, outputFilename: String, settings: Settings) {
     val lines = lines_.asSequence()
             .filter { it.fumens.isNotEmpty() }
             .mapIndexed { index, line -> Line(index, line.pieces, line.fumens) }
@@ -162,7 +187,7 @@ fun run(lines_: List<Line>, settings: Settings) {
             }
             .toList()
 
-    val ga = GA(sequenceToLine2, solutions, BitSize(solutions.size, lines.size))
+    val ga = GA(outputFilename, sequenceToLine2, solutions, BitSize(solutions.size, lines.size))
     ga.run(settings)
 }
 
@@ -173,7 +198,7 @@ data class Settings(
         val mutationScale: Double, val maxGeneration: Int
 )
 
-class GA(private val sequenceToLine2: List<Line2>, private val solutions: List<Solution>, private val size: BitSize) {
+class GA(private val outputFilename: String, private val sequenceToLine2: List<Line2>, private val solutions: List<Solution>, private val size: BitSize) {
     private val random = Random()
 
     fun fix(copied1: BitSet) {
@@ -319,7 +344,7 @@ class GA(private val sequenceToLine2: List<Line2>, private val solutions: List<S
                         .sorted()
                         .toList()
 
-                val printWriter = PrintWriter(BufferedWriter(FileWriter("output.txt")))
+                val printWriter = PrintWriter(BufferedWriter(FileWriter(outputFilename)))
                 printWriter.use { writer ->
                     fumens.forEach { writer.println(it) }
                 }
